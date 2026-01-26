@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     ];
 
     const apiKey = process.env.OPENROUTER_API_KEY;
-    const model = process.env.OPENROUTER_DEFAULT_MODEL || 'google/gemini-flash-1.5';
+    const model = process.env.OPENROUTER_DEFAULT_MODEL || 'google/gemini-2.0-flash-001';
 
     console.log('API Key exists:', !!apiKey);
     console.log('Model:', model);
