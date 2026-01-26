@@ -13,7 +13,7 @@ interface CharacterState {
 }
 
 export const useCharacterStore = create<CharacterState>((set, get) => ({
-  characters: charactersData.characters as Character[],
+  characters: charactersData.characters as unknown as Character[],
   selectedCharacter: null,
   isModalOpen: false,
 
