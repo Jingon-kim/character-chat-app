@@ -26,79 +26,39 @@ export async function POST(request: NextRequest) {
       { role: 'user', content: message },
     ];
 
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    const model = process.env.OPENROUTER_DEFAULT_MODEL || 'google/gemini-flash-1.5';
+
+    console.log('API Key exists:', !!apiKey);
+    console.log('Model:', model);
+
     // Check if API key exists
-    if (!process.env.OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY.includes('placeholder')) {
+    if (!apiKey || apiKey.includes('placeholder')) {
+      console.log('Using mock response - no API key');
       // Return mock response for development
       const mockResponses: Record<string, string[]> = {
-        minsu: [
-          '야 ㅋㅋㅋ 그거 진짜 웃기다',
-          '오 대박 ㄹㅇ?',
-          '아 배고파... 뭐 먹을까?',
-          '게임하자 게임!! 🎮',
-        ],
-        yujin: [
-          '그렇구나. 잘 생각해봐.',
-          '음, 나쁘지 않은 것 같아.',
-          '효율적으로 하는 게 좋을 것 같은데.',
-          '카페 가서 얘기할까?',
-        ],
-        hana: [
-          '와 정말? 그거 너무 좋다~!',
-          '음... 어떻게 생각해?',
-          '그랬구나... 힘들었겠다 ㅠㅠ',
-          '오늘 날씨 좋다~ 산책 갈래?',
-        ],
-        sora: [
-          '헐 대박!! 진짜?!',
-          '완전 찐이야!! 💕',
-          '가자가자~ 놀러가자!!',
-          '이거 봤어?? 완전 핫함!!',
-        ],
-        rina: [
-          '됐어, 알겠어.',
-          '그건 아닌 것 같은데.',
-          'Time is money.',
-          '다시 생각해봐.',
-        ],
-        mika: [
-          '...재밌네.',
-          '그런 날도 있지.',
-          '비 온 뒤에 땅이 굳는 법이야.',
-          '더 얘기해봐.',
-        ],
-        jun: [
-          '...응.',
-          '알았어.',
-          '가자.',
-          '괜찮아?',
-        ],
-        yuki: [
-          '그랬구나... 많이 힘들었겠다.',
-          '저도 그 생각 해봤어요.',
-          '괜찮아요, 천천히요.',
-          '커피 한 잔 할래요?',
-        ],
+        minsu: ['야 ㅋㅋㅋ 그거 진짜 웃기다', '오 대박 ㄹㅇ?', '아 배고파... 뭐 먹을까?'],
+        yujin: ['그렇구나. 잘 생각해봐.', '음, 나쁘지 않은 것 같아.'],
+        hana: ['와 정말? 그거 너무 좋다~!', '음... 어떻게 생각해?'],
+        sora: ['헐 대박!! 진짜?!', '완전 찐이야!! 💕'],
+        rina: ['됐어, 알겠어.', '그건 아닌 것 같은데.'],
+        mika: ['...재밌네.', '그런 날도 있지.'],
+        jun: ['...응.', '알았어.'],
+        yuki: ['그랬구나... 많이 힘들었겠다.', '저도 그 생각 해봤어요.'],
       };
 
       const responses = mockResponses[characterId] || ['안녕!'];
       const randomResponse = responses[Math.floor(Math.random() * responses.length)];
 
-      // Simulate streaming with mock data
       const encoder = new TextEncoder();
       const stream = new ReadableStream({
         async start(controller) {
-          // Simulate typing delay
           await new Promise(resolve => setTimeout(resolve, 500));
-
-          // Send response character by character for realistic effect
           for (const char of randomResponse) {
-            const data = JSON.stringify({
-              choices: [{ delta: { content: char } }]
-            });
+            const data = JSON.stringify({ choices: [{ delta: { content: char } }] });
             controller.enqueue(encoder.encode(`data: ${data}\n\n`));
             await new Promise(resolve => setTimeout(resolve, 30));
           }
-
           controller.enqueue(encoder.encode('data: [DONE]\n\n'));
           controller.close();
         }
@@ -114,15 +74,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Real API call
+    console.log('Calling OpenRouter API...');
     const response = await fetch(OPENROUTER_API, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+        'HTTP-Referer': 'https://character-chat-app-iota.vercel.app',
+        'X-Title': 'Character Universe',
       },
       body: JSON.stringify({
-        model: process.env.OPENROUTER_DEFAULT_MODEL || 'anthropic/claude-3.5-sonnet',
+        model,
         messages,
         stream: true,
         max_tokens: 500,
@@ -130,8 +92,19 @@ export async function POST(request: NextRequest) {
       }),
     });
 
+    console.log('OpenRouter response status:', response.status);
+
     if (!response.ok) {
-      throw new Error(`OpenRouter API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error('OpenRouter API error:', response.status, errorText);
+      return new Response(JSON.stringify({
+        error: 'OpenRouter API error',
+        status: response.status,
+        details: errorText
+      }), {
+        status: response.status,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
     // Forward the stream
@@ -145,7 +118,10 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Chat API error:', error);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+    return new Response(JSON.stringify({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
