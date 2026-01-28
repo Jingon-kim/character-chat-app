@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     ];
 
     const apiKey = process.env.OPENROUTER_API_KEY;
-    const model = process.env.OPENROUTER_DEFAULT_MODEL || 'meta-llama/llama-3.2-3b-instruct:free';
+    const model = process.env.OPENROUTER_DEFAULT_MODEL || 'meta-llama/llama-3.1-8b-instruct:free';
 
     console.log('API Key exists:', !!apiKey);
     console.log('Model:', model);
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://character-chat-app-iota.vercel.app',
+        'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'https://character-chat-app-five.vercel.app',
         'X-Title': 'Character Universe',
       },
       body: JSON.stringify({
@@ -97,13 +97,43 @@ export async function POST(request: NextRequest) {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('OpenRouter API error:', response.status, errorText);
-      return new Response(JSON.stringify({
-        error: 'OpenRouter API error',
-        status: response.status,
-        details: errorText
-      }), {
-        status: response.status,
-        headers: { 'Content-Type': 'application/json' },
+
+      // API 한도 초과 또는 오류 시 Mock 응답으로 fallback
+      console.log('Falling back to mock response due to API error');
+      const mockResponses: Record<string, string[]> = {
+        minsu: ['야 ㅋㅋㅋ 그거 진짜 웃기다', '오 대박 ㄹㅇ?', '아 배고파... 뭐 먹을까?'],
+        yujin: ['그렇구나. 잘 생각해봐.', '음, 나쁘지 않은 것 같아.'],
+        hana: ['와 정말? 그거 너무 좋다~!', '음... 어떻게 생각해?'],
+        sora: ['헐 대박!! 진짜?!', '완전 찐이야!! 💕'],
+        rina: ['됐어, 알겠어.', '그건 아닌 것 같은데.'],
+        mika: ['...재밌네.', '그런 날도 있지.'],
+        jun: ['...응.', '알았어.'],
+        yuki: ['그랬구나... 많이 힘들었겠다.', '저도 그 생각 해봤어요.'],
+      };
+
+      const responses = mockResponses[characterId] || ['안녕!'];
+      const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({
+        async start(controller) {
+          await new Promise(resolve => setTimeout(resolve, 300));
+          for (const char of randomResponse) {
+            const data = JSON.stringify({ choices: [{ delta: { content: char } }] });
+            controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+            await new Promise(resolve => setTimeout(resolve, 30));
+          }
+          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+          controller.close();
+        }
+      });
+
+      return new Response(stream, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
       });
     }
 
