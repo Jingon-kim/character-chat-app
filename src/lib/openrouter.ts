@@ -62,7 +62,7 @@ export async function generateCharacterResponse({
       'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
     },
     body: JSON.stringify({
-      model: process.env.OPENROUTER_DEFAULT_MODEL || 'anthropic/claude-3.5-sonnet',
+      model: process.env.OPENROUTER_DEFAULT_MODEL || 'meta-llama/llama-3.2-3b-instruct:free',
       messages: [
         { role: 'system', content: systemPrompt },
         ...formatMessages(messages, allCharacters),
@@ -90,7 +90,7 @@ export async function generateSimpleResponse({
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: process.env.OPENROUTER_DEFAULT_MODEL || 'anthropic/claude-3.5-sonnet',
+      model: process.env.OPENROUTER_DEFAULT_MODEL || 'meta-llama/llama-3.2-3b-instruct:free',
       messages: [
         { role: 'system', content: character.systemPrompt },
         ...messages.slice(-10).map(m => ({

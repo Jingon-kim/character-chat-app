@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     ];
 
     const apiKey = process.env.OPENROUTER_API_KEY;
-    const model = process.env.OPENROUTER_DEFAULT_MODEL || 'google/gemini-2.0-flash-001';
+    const model = process.env.OPENROUTER_DEFAULT_MODEL || 'meta-llama/llama-3.2-3b-instruct:free';
 
     console.log('API Key exists:', !!apiKey);
     console.log('Model:', model);
